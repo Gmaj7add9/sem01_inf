@@ -1,6 +1,10 @@
 Potrzeba:
   Ogólne:
-    Read/Write plików audio
+    - coś do odtwarzania plików
+    - GUI
+        - fajnie by było gdyby otwierało się oddzielnie okienko do przeglądania zawartości dysku przy wczytywaniu i zapisywania, a w zapisie można sobie wybrać różne typy plików i dodać wszelkie wymagane info
+    - coś do wizualizacji plików (jako dodatek)
+        - fajnie by było gdyby wizualizacja była jednocześnie suwakiem tak jak w audacity
   Efekty:
     
   
