@@ -25,7 +25,7 @@ def read_audio_file(file_path):
             audio = AudioSegment.from_file(file_path)
 
 
-        # informacje o pliku w kolejnosci: dlugosc (w sekundach), ilosc kanałów, rozmiar próbki, rozdzielczosc pliku
+        # informacje o pliku w kolejnosci: dlugosc (trzeba przeknowertować na sekundy), ilosc kanałów, rozmiar próbki, rozdzielczosc pliku
         file_Info=(str(len(audio)),str(audio.channels),str(audio.sample_width),str(audio.frame_rate))
 
         return(audio,file_Info)
