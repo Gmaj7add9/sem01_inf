@@ -10,6 +10,8 @@ import wave
 import numpy as np
 from scipy.io.wavfile import  write
 from scipy.io import wavfile
+from effects import distortion,echo
+from file_io import *
 
 class AudioGUI(QMainWindow):
     def __init__(self):
@@ -132,7 +134,7 @@ class AudioGUI(QMainWindow):
 
         # Table for file info
         self.file_table = QTableWidget(2, 4)
-        self.file_table.setHorizontalHeaderLabels(["File name", "File size [B]", "Time [s]", "Max Amplitude [dB]"])
+        self.file_table.setHorizontalHeaderLabels(["File path", "File size [B]", "Time [s]", "Max Amplitude [dB]"])
         main_layout_bottom.addWidget(self.file_table)
 
         main_widget.setLayout(main_layout)
@@ -165,6 +167,7 @@ class AudioGUI(QMainWindow):
         file_path, _ = QFileDialog.getOpenFileName(self, "Open WAV File", "", "WAV Files (*.wav)", options=options)
         if file_path:
             self.load_wave_At(file_path)
+            self.table_update(file_path)
 
 
     def load_wave_Af(self, file_path):
@@ -237,7 +240,6 @@ class AudioGUI(QMainWindow):
             self.file_table.setItem(0, 1, QTableWidgetItem(str(len(data))))
             self.file_table.setItem(0, 2, QTableWidgetItem(f"{duration:.2f}"))
             self.file_table.setItem(0, 3, QTableWidgetItem(f"{20 * np.log10(max_amplitude):.2f}"))
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
