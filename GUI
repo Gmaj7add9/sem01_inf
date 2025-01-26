@@ -64,6 +64,7 @@ class AudioGUI(QMainWindow):
         super().__init__()
         self.setWindowTitle("Audio GUI")
         self.setGeometry(100, 100, 1000, 600)
+        self.graphType = "A(t)"
 
         self.setStyleSheet("""
             background-color: #FBE9D0;
@@ -87,6 +88,8 @@ class AudioGUI(QMainWindow):
         graph_menu = menu_bar.addMenu("Graph")
         at_action = QAction("A(t)", self)
         af_action = QAction("A(f)", self)
+        at_action.triggered.connect(self.at_action_graph)
+        af_action.triggered.connect(self.af_action_graph)
         graph_menu.addAction(at_action)
         graph_menu.addAction(af_action)
 
@@ -182,6 +185,11 @@ class AudioGUI(QMainWindow):
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
 
+    def at_action_graph(self):
+        self.graphType = "A(t)"
+    def af_action_graph(self):
+        self.graphType = "A(f)"
+
     def create_threshold_slider_with_label(self, label_text, layout):
         slider_layout = QVBoxLayout()
 
@@ -245,49 +253,81 @@ class AudioGUI(QMainWindow):
             framerate = wav_file.getframerate()
             duration = n_frames / framerate
 
+            data = wav_file.readframes(n_frames)
+            wave_data = np.frombuffer(data, dtype=np.int16)
+
+            max_amplitude = np.max(np.abs(wave_data))
+
         # Add or update the first row in the table
         self.file_table.setItem(0, 0, QTableWidgetItem(file_name))
         self.file_table.setItem(0, 1, QTableWidgetItem(str(file_size)))
         self.file_table.setItem(0, 2, QTableWidgetItem(f"{duration:.2f}"))
-
-        # You might want to calculate max amplitude here if needed
-        self.file_table.setItem(0, 3, QTableWidgetItem("N/A"))
+        self.file_table.setItem(0, 3, QTableWidgetItem(f"{20 * np.log10(max_amplitude):.2f}"))
 
     def load_wave(self, file_path):
-        with wave.open(file_path, 'rb') as wav_file:
-            # Store wave file parameters
-            self.wav_params = wav_file.getparams()
-            n_channels = wav_file.getnchannels()
-            sample_width = wav_file.getsampwidth()
-            framerate = wav_file.getframerate()
-            n_frames = wav_file.getnframes()
+        if self.graphType == "A(t)":
+            with wave.open(file_path, 'rb') as wav_file:
+                # Store wave file parameters
+                self.wav_params = wav_file.getparams()
+                n_channels = wav_file.getnchannels()
+                sample_width = wav_file.getsampwidth()
+                framerate = wav_file.getframerate()
+                n_frames = wav_file.getnframes()
 
-            # Read entire file data
-            data = wav_file.readframes(n_frames)
+                # Read entire file data
+                data = wav_file.readframes(n_frames)
 
-            # Convert to numpy array
-            wave_data = np.frombuffer(data, dtype=np.int16)
+                # Convert to numpy array
+                wave_data = np.frombuffer(data, dtype=np.int16)
 
-            # If stereo, average the channels to create mono
-            if n_channels == 2:
-                wave_data = wave_data.reshape(-1, 2).mean(axis=1)
+                # If stereo, average the channels to create mono
+                if n_channels == 2:
+                    wave_data = wave_data.reshape(-1, 2).mean(axis=1)
 
-            duration = n_frames / framerate
-            time = np.linspace(0, duration, num=len(wave_data))
+                duration = n_frames / framerate
+                time = np.linspace(0, duration, num=len(wave_data))
 
-            self.graph.clear()
-            self.graph.plot(time, wave_data, pen='r')
+                self.graph.clear()
+                self.graph.plot(time, wave_data, pen='r')
 
-            # Store raw data for potential saving
-            self.raw_audio_data = wave_data
-            self.audio_file_path = file_path
+                # Store raw data for potential saving
+                self.raw_audio_data = wave_data
+                self.audio_file_path = file_path
+
+    def load_wave_FFT(self, file_path):
+        if self.graphType == "A(f)":
+            with wave.open(file_path, 'rb') as wav_file:
+                n_channels = wav_file.getnchannels()  # Number of channels
+                framerate = wav_file.getframerate()
+                n_frames = wav_file.getnframes()
+
+                data = wav_file.readframes(n_frames)
+                wave_data = np.frombuffer(data, dtype=np.int16)
+
+                # Reshape wave_data to separate channels
+                wave_data = wave_data.reshape(-1, n_channels)
+
+                # Use only the first channel for analysis
+                channel_data = wave_data[:, 0]
+
+                # Compute Fourier Transform
+                freqs = np.fft.rfftfreq(n_frames, 1 / framerate)
+                fft_magnitudes = np.abs(np.fft.rfft(channel_data))
+
+                # Plot Fourier Transform
+                self.graph.clear()
+                self.graph.plot(freqs, fft_magnitudes, pen='b')
 
     def open_file(self):
         options = QFileDialog.Options()
         file_path, _ = QFileDialog.getOpenFileName(self, "Open WAV File", "", "WAV Files (*.wav)", options=options)
         if file_path:
-            self.load_wave(file_path)
             self.table_update(file_path)
+            if self.graphType == "A(t)":
+                self.load_wave(file_path)
+            elif self.graphType == "A(f)":
+                self.load_wave_FFT(file_path)
+
 
     def refresh_action(self):
         print("Refresh button clicked!")
