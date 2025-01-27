@@ -12,6 +12,7 @@ from scipy.io.wavfile import write
 from scipy.io import wavfile
 from equalizer import equalize
 from echo import add_reverb
+from distortion import apply_distortion
 
 class AudioGUI(QMainWindow):
     def __init__(self):
@@ -144,40 +145,6 @@ class AudioGUI(QMainWindow):
     def af_action_graph(self):
         self.graphType = "A(f)"
 
-    def refresh_action(self):
-        if hasattr(self, 'raw_audio_data') and hasattr(self, 'wav_params'):
-            # Get current EQ and reverb values
-            treble = self.treble_slider.value()
-            mid = self.mid_slider.value()
-            bass = self.bass_slider.value()
-            decay = self.decay_dial.value() / 10.0  # Scale dial value
-            wetness = self.wetness_dial.value() / 10.0  # Scale dial value
-            delay = self.delay_input.value()
-
-            # Apply equalizer first
-            processed_audio = equalize(
-                self.raw_audio_data,
-                self.wav_params.framerate,
-                treble,
-                mid,
-                bass
-            )
-
-            # Then apply reverb
-            processed_audio = add_reverb(
-                processed_audio,
-                delay,
-                decay,
-                wetness
-            )
-
-            # Update raw audio data and graph
-            self.raw_audio_data = processed_audio
-            duration = len(processed_audio) / self.wav_params.framerate
-            time = np.linspace(0, duration, num=len(processed_audio))
-
-            self.graph.clear()
-            self.graph.plot(time, processed_audio, pen='r')
 
     def create_slider(self, label_text, layout):
         slider_layout = QVBoxLayout()
@@ -249,6 +216,7 @@ class AudioGUI(QMainWindow):
                 # Store raw data for potential saving
                 self.raw_audio_data = wave_data
                 self.audio_file_path = file_path
+        source_file=wav_file
 
     def load_wave_FFT(self, file_path):
         if self.graphType == "A(f)":
@@ -283,6 +251,52 @@ class AudioGUI(QMainWindow):
                 self.load_wave(file_path)
             elif self.graphType == "A(f)":
                 self.load_wave_FFT(file_path)
+
+    def refresh_action(self):
+        if hasattr(self, 'raw_audio_data') and hasattr(self, 'wav_params'):
+            # Get distortion parameters
+            threshold_db = self.threshold_input.value()
+            level = self.level_dial.value()
+            gain_db = self.gain_input.value()
+
+            # Get EQ and reverb parameters
+            treble = self.treble_slider.value()
+            mid = self.mid_slider.value()
+            bass = self.bass_slider.value()
+            decay = self.decay_dial.value() / 10.0
+            wetness = self.wetness_dial.value() / 10.0
+            delay = self.delay_input.value()
+
+            # Apply effects chain: Distortion -> EQ -> Reverb
+            processed_audio = apply_distortion(
+                self.raw_audio_data,
+                threshold_db,
+                level,
+                gain_db
+            )
+
+            processed_audio = equalize(
+                processed_audio,
+                self.wav_params.framerate,
+                treble,
+                mid,
+                bass
+            )
+
+            processed_audio = add_reverb(
+                processed_audio,
+                delay,
+                decay,
+                wetness
+            )
+
+            # Update raw audio data and graph
+            self.raw_audio_data = processed_audio
+            duration = len(processed_audio) / self.wav_params.framerate
+            time = np.linspace(0, duration, num=len(processed_audio))
+
+            self.graph.clear()
+            self.graph.plot(time, processed_audio, pen='r')
 
     def save_audio(self):
         file_path, _ = QFileDialog.getSaveFileName(self, "Save Audio", "", "WAV (*.wav)")
